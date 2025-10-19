@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>角动量守恒演示 | 物理可视化</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    
+    <!-- 配置Tailwind自定义颜色和字体 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2563eb',      // 深蓝主色调
+                        secondary: '#10b981',    // 绿色辅助色
+                        accent: '#7c3aed',       // 紫色强调色
+                        dark: '#1e293b',
+                        light: '#f8fafc'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .card-hover {
+                @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+            }
+            .gradient-bg {
+                background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            }
+            .vector-line {
+                stroke-dasharray: 5,5;
+                animation: dash 1s linear infinite;
+            }
+            .pulse-subtle {
+                animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            }
+        }
+        
+        @keyframes dash {
+            to { stroke-dashoffset: 10; }
+        }
+        
+        @keyframes pulse-subtle {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+        
+        /* 滑块样式增强 */
+        input[type="range"] {
+            @apply w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            @apply appearance-none w-6 h-6 rounded-full bg-primary cursor-pointer shadow-md transition-transform hover:scale-110;
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            @apply appearance-none w-6 h-6 rounded-full bg-primary cursor-pointer shadow-md transition-transform hover:scale-110;
+        }
+        
+        /* 平滑滚动 */
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        /* 加载动画 */
+        .loader {
+            border-top-color: theme('colors.primary');
+            animation: spinner 0.6s linear infinite;
+        }
+        
+        @keyframes spinner {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen font-sans text-dark">
+    <!-- 顶部导航栏 -->
+    <header class="bg-white/90 backdrop-blur-md shadow-sm sticky top-0 z-50 transition-all duration-300">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                    <i class="fa fa-cog text-white text-xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">角动量守恒演示</h1>
+            </div>
+            <nav class="hidden md:flex space-x-8">
+                <a href="#demo" class="hover:text-primary transition-colors font-medium flex items-center">
+                    <i class="fa fa-play-circle mr-2"></i>演示
+                </a>
+                <a href="#principle" class="hover:text-primary transition-colors font-medium flex items-center">
+                    <i class="fa fa-balance-scale mr-2"></i>守恒原理
+                </a>
+                <a href="#examples" class="hover:text-primary transition-colors font-medium flex items-center">
+                    <i class="fa fa-life-ring mr-2"></i>实际应用
+                </a>
+            </nav>
+            <button class="md:hidden text-dark text-xl">
+                <i class="fa fa-bars"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-12">
+        <!-- 英雄区域 -->
+        <section class="mb-16 text-center max-w-4xl mx-auto">
+            <div class="inline-block px-4 py-1.5 bg-accent/10 text-accent rounded-full mb-6 text-sm font-medium">
+                基础物理定律可视化
+            </div>
+            <h2 class="text-[clamp(2rem,5vw,3.5rem)] font-bold mb-6 leading-tight">
+                探索角动量守恒的<br class="md:hidden">奇妙世界
+            </h2>
+            <p class="text-gray-600 text-lg mb-8 max-w-2xl mx-auto">
+                角动量守恒是自然界最基本的守恒定律之一。通过交互式演示，直观感受转动惯量与角速度如何相互影响，保持总角动量恒定不变。
+            </p>
+            <a href="#demo" class="inline-flex items-center px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 font-medium">
+                <i class="fa fa-play-circle mr-2"></i>开始探索
+            </a>
+        </section>
+
+        <!-- 核心原理卡片 -->
+        <section class="mb-16">
+            <div class="bg-white rounded-2xl shadow-xl p-6 md:p-8 border border-gray-100 card-hover">
+                <div class="flex flex-col md:flex-row items-center gap-6">
+                    <div class="w-full md:w-1/3">
+                        <div class="bg-gradient-to-br from-primary/5 to-accent/5 rounded-xl p-6 h-full flex items-center justify-center">
+                            <div class="text-center">
+                                <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-white shadow-md flex items-center justify-center">
+                                    <span class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">L</span>
+                                </div>
+                                <h3 class="text-xl font-bold mb-2">角动量守恒</h3>
+                                <p class="text-gray-600">当系统不受外力矩作用时，总角动量保持恒定</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-2/3">
+                        <div class="flex items-center justify-center my-6">
+                            <div class="text-4xl font-bold text-center">
+                                <span class="text-dark">L = I × ω =</span>
+                                <span class="text-accent mx-2 pulse-subtle">常数</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                            <div class="bg-gray-50 p-5 rounded-xl border border-gray-100">
+                                <div class="flex items-center mb-3">
+                                    <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-3">
+                                        <i class="fa fa-arrow-down text-primary"></i>
+                                    </div>
+                                    <h4 class="font-semibold">转动惯量减小</h4>
+                                </div>
+                                <p class="text-gray-600">当转动惯量(I)减小时，角速度(ω)会相应增大，以保持角动量(L)不变</p>
+                            </div>
+                            <div class="bg-gray-50 p-5 rounded-xl border border-gray-100">
+                                <div class="flex items-center mb-3">
+                                    <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-3">
+                                        <i class="fa fa-arrow-up text-primary"></i>
+                                    </div>
+                                    <h4 class="font-semibold">转动惯量增大</h4>
+                                </div>
+                                <p class="text-gray-600">当转动惯量(I)增大时，角速度(ω)会相应减小，以保持角动量(L)不变</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 演示部分 -->
+        <section id="demo" class="mb-20">
+            <div class="text-center mb-10">
+                <h3 class="text-2xl md:text-3xl font-bold mb-3">交互式演示</h3>
+                <p class="text-gray-600 max-w-2xl mx-auto">调整转动惯量滑块，观察旋转速度如何变化以保持角动量守恒</p>
+            </div>
+            
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+                <div class="flex flex-col lg:flex-row">
+                    <!-- 动画演示区域 -->
+                    <div class="w-full lg:w-1/2 p-6 md:p-8 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+                        <div id="animation-container" class="relative w-[340px] h-[340px] flex items-center justify-center">
+                            <!-- 装饰性背景圆环 -->
+                            <div class="absolute w-[320px] h-[320px] rounded-full border border-gray-200"></div>
+                            <div class="absolute w-[280px] h-[280px] rounded-full border border-gray-200"></div>
+                            
+                            <!-- 角动量矢量指示 -->
+                            <svg class="absolute w-full h-full pointer-events-none" viewBox="0 0 340 340">
+                                <line x1="170" y1="170" x2="170" y2="70" stroke="#7c3aed" stroke-width="3" class="vector-line" />
+                                <polygon points="160,80 170,70 180,80" fill="#7c3aed" />
+                                <text x="180" y="85" fill="#7c3aed" font-size="14" font-weight="bold">L (恒定)</text>
+                            </svg>
+                            
+                            <!-- 旋转体 - 主圆 -->
+                            <div id="rotor" class="relative w-[100px] h-[100px] rounded-full bg-primary/10 border-4 border-primary/80 shadow-md">
+                                <!-- 旋转臂 -->
+                                <div id="arm1" class="absolute top-1/2 left-full w-[100px] h-[8px] bg-accent/80 rounded-full -translate-y-1/2"></div>
+                                <div id="arm2" class="absolute top-1/2 right-full w-[100px] h-[8px] bg-accent/80 rounded-full -translate-y-1/2"></div>
+                                <div id="arm3" class="absolute top-full left-1/2 w-[8px] h-[100px] bg-accent/80 rounded-full -translate-x-1/2"></div>
+                                <div id="arm4" class="absolute bottom-full left-1/2 w-[8px] h-[100px] bg-accent/80 rounded-full -translate-x-1/2"></div>
+                                
+                                <!-- 质量块 - 大小随转动惯量变化 -->
+                                <div id="mass1" class="absolute top-1/2 right-[calc(100%+100px)] w-[30px] h-[30px] rounded-full bg-secondary shadow-md -translate-y-1/2 transition-all duration-300"></div>
+                                <div id="mass2" class="absolute top-1/2 left-[calc(100%+100px)] w-[30px] h-[30px] rounded-full bg-secondary shadow-md -translate-y-1/2 transition-all duration-300"></div>
+                                <div id="mass3" class="absolute bottom-[calc(100%+100px)] left-1/2 w-[30px] h-[30px] rounded-full bg-secondary shadow-md -translate-x-1/2 transition-all duration-300"></div>
+                                <div id="mass4" class="absolute top-[calc(100%+100px)] left-1/2 w-[30px] h-[30px] rounded-full bg-secondary shadow-md -translate-x-1/2 transition-all duration-300"></div>
+                                
+                                <!-- 中心标记 -->
+                                <div class="absolute top-1/2 left-1/2 w-[16px] h-[16px] rounded-full bg-dark shadow-sm -translate-x-1/2 -translate-y-1/2"></div>
+                                
+                                <!-- 角速度方向指示 -->
+                                <div class="absolute top-1/4 right-1/4 w-[15px] h-[15px] text-primary/70">
+                                    <i class="fa fa-arrow-circle-right text-xl"></i>
+                                </div>
+                            </div>
+                            
+                            <!-- 动态指示器 -->
+                            <div class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white px-5 py-2.5 rounded-full shadow-md flex items-center space-x-2 transform transition-all duration-300 hover:shadow-lg">
+                                <i class="fa fa-tachometer text-primary"></i>
+                                <span class="font-semibold">角速度: </span>
+                                <span id="angular-velocity" class="text-primary font-bold">3.14 rad/s</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 控制面板和数据显示 -->
+                    <div class="w-full lg:w-1/2 p-6 md:p-8">
+                        <div class="space-y-8">
+                            <!-- 控制面板 -->
+                            <div class="space-y-6">
+                                <h3 class="text-xl font-bold mb-4 flex items-center">
+                                    <i class="fa fa-sliders text-primary mr-2"></i>调整转动惯量
+                                </h3>
+                                
+                                <!-- 转动惯量控制 -->
+                                <div class="space-y-5">
+                                    <div class="flex justify-between items-center">
+                                        <label for="moment-of-inertia" class="font-medium text-lg">转动惯量 (I)</label>
+                                        <span id="inertia-value" class="text-primary font-bold text-xl">4.0 kg·m²</span>
+                                    </div>
+                                    <input 
+                                        type="range" 
+                                        id="moment-of-inertia" 
+                                        min="1" 
+                                        max="4" 
+                                        step="0.1" 
+                                        value="4"
+                                        class="w-full"
+                                    >
+                                    <div class="flex justify-between text-sm text-gray-500">
+                                        <span>小 I → 快 ω</span>
+                                        <span>大 I → 慢 ω</span>
+                                    </div>
+                                    
+                                    <!-- 视觉化对比 -->
+                                    <div class="flex justify-between items-center mt-3">
+                                        <div class="flex flex-col items-center">
+                                            <div class="w-16 h-16 flex items-center justify-center">
+                                                <div class="w-4 h-4 rounded-full bg-primary/20 border-2 border-primary relative">
+                                                    <div class="absolute w-12 h-2 bg-accent/70 rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>
+                                                </div>
+                                            </div>
+                                            <span class="text-xs mt-1 text-gray-600">小转动惯量</span>
+                                        </div>
+                                        <i class="fa fa-exchange text-gray-400"></i>
+                                        <div class="flex flex-col items-center">
+                                            <div class="w-16 h-16 flex items-center justify-center">
+                                                <div class="w-6 h-6 rounded-full bg-primary/20 border-2 border-primary relative">
+                                                    <div class="absolute w-16 h-2 bg-accent/70 rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>
+                                                </div>
+                                            </div>
+                                            <span class="text-xs mt-1 text-gray-600">大转动惯量</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 角动量守恒显示 -->
+                                <div class="space-y-3 bg-accent/5 p-5 rounded-xl border border-accent/20">
+                                    <div class="flex justify-between items-center">
+                                        <label class="font-medium text-lg flex items-center">
+                                            <i class="fa fa-shield text-accent mr-2"></i>角动量 (L)
+                                        </label>
+                                        <span id="angular-momentum" class="text-accent font-bold text-xl">12.56 kg·m²/s</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                                        <div id="momentum-bar" class="bg-gradient-to-r from-accent to-primary h-3 rounded-full" style="width: 100%"></div>
+                                    </div>
+                                    <div class="text-sm text-gray-600 font-medium text-center">
+                                        <i class="fa fa-check-circle text-accent mr-1"></i>角动量保持恒定不变
+                                    </div>
+                                </div>
+                                
+                                <!-- 控制按钮 -->
+                                <div class="flex space-x-4 pt-2">
+                                    <button id="start-btn" class="flex-1 bg-primary hover:bg-primary/90 text-white py-3 px-4 rounded-xl transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg">
+                                        <i class="fa fa-play mr-2"></i>开始演示
+                                    </button>
+                                    <button id="pause-btn" class="flex-1 bg-gray-200 hover:bg-gray-300 text-dark py-3 px-4 rounded-xl transition-all duration-300 flex items-center justify-center" disabled>
+                                        <i class="fa fa-pause mr-2"></i>暂停
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- 数据对比显示 -->
+                            <div class="bg-gray-50 rounded-xl p-5 border border-gray-100 shadow-sm">
+                                <h3 class="text-xl font-bold mb-4 flex items-center">
+                                    <i class="fa fa-balance-scale text-primary mr-2"></i>守恒关系
+                                </h3>
+                                <div class="space-y-5">
+                                    <div class="flex flex-wrap justify-between items-center gap-4">
+                                        <div class="flex items-center">
+                                            <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mr-3">
+                                                <i class="fa fa-cube text-primary text-xl"></i>
+                                            </div>
+                                            <div>
+                                                <div class="text-gray-500 text-sm">转动惯量 (I)</div>
+                                                <div id="data-inertia" class="font-bold text-lg">4.0 kg·m²</div>
+                                            </div>
+                                        </div>
+                                        <div class="text-2xl font-bold text-gray-300">×</div>
+                                        <div class="flex items-center">
+                                            <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mr-3">
+                                                <i class="fa fa-refresh text-primary text-xl"></i>
+                                            </div>
+                                            <div>
+                                                <div class="text-gray-500 text-sm">角速度 (ω)</div>
+                                                <div id="data-velocity" class="font-bold text-lg">3.14 rad/s</div>
+                                            </div>
+                                        </div>
+                                        <div class="text-2xl font-bold text-gray-300">=</div>
+                                        <div class="flex items-center">
+                                            <div class="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center mr-3">
+                                                <i class="fa fa-arrow-up text-accent text-xl"></i>
+                                            </div>
+                                            <div>
+                                                <div class="text-gray-500 text-sm">角动量 (L)</div>
+                                                <div id="data-momentum" class="font-bold text-lg text-accent">12.56 kg·m²/s</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 变化趋势指示 -->
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                                        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 transform transition-all duration-300 hover:shadow-md">
+                                            <div class="flex items-center text-sm text-gray-500 mb-2">
+                                                <i class="fa fa-arrow-left text-primary mr-1"></i> 当 I 减小时
+                                            </div>
+                                            <div class="flex items-center text-green-600 font-medium">
+                                                <i class="fa fa-arrow-up mr-1"></i> ω 增大以保持 L 不变
+                                            </div>
+                                        </div>
+                                        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 transform transition-all duration-300 hover:shadow-md">
+                                            <div class="flex items-center text-sm text-gray-500 mb-2">
+                                                <i class="fa fa-arrow-right text-primary mr-1"></i> 当 I 增大时
+                                            </div>
+                                            <div class="flex items-center text-red-600 font-medium">
+                                                <i class="fa fa-arrow-down mr-1"></i> ω 减小以保持 L 不变
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- 动态关系图表 -->
+        <section class="mb-20">
+            <div class="bg-white rounded-2xl shadow-xl p-6 md:p-8 border border-gray-100 card-hover">
+                <h3 class="text-2xl font-bold mb-6 flex items-center">
+                    <i class="fa fa-line-chart text-primary mr-2"></i>转动惯量与角速度关系
+                </h3>
+                <div class="h-[320px]">
+                    <canvas id="physics-chart"></canvas>
+                </div>
+                <p class="text-center text-gray-600 mt-6">
+                    <i class="fa fa-info-circle text-accent mr-1"></i>
+                    图表清晰展示了转动惯量(I)与角速度(ω)的反比关系，两者的乘积(角动量L)始终保持恒定值12.56 kg·m²/s
+                </p>
+            </div>
+        </section>
+        
+        <!-- 守恒原理说明 -->
+        <section id="principle" class="mb-20">
+            <div class="text-center mb-10">
+                <h3 class="text-2xl md:text-3xl font-bold mb-3">角动量守恒原理</h3>
+                <p class="text-gray-600 max-w-2xl mx-auto">深入理解这一基本物理定律的科学内涵</p>
+            </div>
+            
+            <div class="bg-white rounded-2xl shadow-xl p-6 md:p-8 border border-gray-100">
+                <div class="grid md:grid-cols-2 gap-10">
+                    <div>
+                        <h4 class="text-xl font-semibold mb-4 flex items-center">
+                            <i class="fa fa-lightbulb-o text-yellow-500 mr-2"></i>为什么角动量会守恒？
+                        </h4>
+                        <p class="text-gray-600 mb-5 leading-relaxed">
+                            角动量守恒是物理学中的基本守恒定律之一，它源于空间的旋转对称性。根据诺特定理，每一种对称性都对应一种守恒定律，旋转对称性对应的就是角动量守恒。
+                        </p>
+                        <p class="text-gray-600 mb-5 leading-relaxed">
+                            简单来说，当一个系统不受外力矩或所受外力矩的矢量和为零时，这个系统的总角动量将保持不变。这意味着系统的旋转状态不会自发改变其角动量总量。
+                        </p>
+                        
+                        <div class="bg-gray-50 p-5 rounded-xl mt-8 border border-gray-100">
+                            <h5 class="font-semibold mb-3 flex items-center">
+                                <i class="fa fa-calculator text-primary mr-2"></i>数学表达
+                            </h5>
+                            <div class="space-y-4">
+                                <div class="text-center text-lg">当系统所受合外力矩为零时：</div>
+                                <div class="text-center text-2xl font-bold text-accent my-2">Στ = 0</div>
+                                <div class="text-center text-lg">则系统角动量守恒：</div>
+                                <div class="text-center text-2xl font-bold my-3">L₁ = L₂</div>
+                                <div class="text-center text-xl my-2">I₁·ω₁ = I₂·ω₂</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4 class="text-xl font-semibold mb-4 flex items-center">
+                            <i class="fa fa-check-circle text-primary mr-2"></i>本演示中的守恒验证
+                        </h4>
+                        
+                        <div class="space-y-6">
+                            <div class="bg-gradient-to-r from-primary/5 to-transparent p-5 rounded-xl border border-primary/20">
+                                <h5 class="font-medium mb-3">情况一：最小转动惯量</h5>
+                                <div class="space-y-2 text-gray-700">
+                                    <div>• 转动惯量 I = 1 kg·m²</div>
+                                    <div>• 角速度 ω = 12.56 rad/s</div>
+                                    <div>• 角动量 L = I × ω = 1 × 12.56 = 12.56 kg·m²/s</div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-gradient-to-r from-primary/5 to-transparent p-5 rounded-xl border border-primary/20">
+                                <h5 class="font-medium mb-3">情况二：中等转动惯量</h5>
+                                <div class="space-y-2 text-gray-700">
+                                    <div>• 转动惯量 I = 2 kg·m²</div>
+                                    <div>• 角速度 ω = 6.28 rad/s</div>
+                                    <div>• 角动量 L = I × ω = 2 × 6.28 = 12.56 kg·m²/s</div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-gradient-to-r from-primary/5 to-transparent p-5 rounded-xl border border-primary/20">
+                                <h5 class="font-medium mb-3">情况三：最大转动惯量</h5>
+                                <div class="space-y-2 text-gray-700">
+                                    <div>• 转动惯量 I = 4 kg·m²</div>
+                                    <div>• 角速度 ω = 3.14 rad/s</div>
+                                    <div>• 角动量 L = I × ω = 4 × 3.14 = 12.56 kg·m²/s</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-8 p-4 bg-accent/5 rounded-xl border border-accent/20">
+                            <p class="text-center font-medium text-accent">
+                                三种情况下的角动量完全相等，验证了角动量守恒定律！
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- 实际应用例子 -->
+        <section id="examples" class="mb-16">
+            <div class="text-center mb-10">
+                <h3 class="text-2xl md:text-3xl font-bold mb-3">角动量守恒的实际应用</h3>
+                <p class="text-gray-600 max-w-2xl mx-auto">这一物理原理在生活和自然界中有着广泛应用</p>
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-6">
+                <!-- 例子1 -->
+                <div class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 card-hover">
+                    <div class="h-48 overflow-hidden">
+                        <img src="https://picsum.photos/id/1058/600/400" alt="花样滑冰" class="w-full h-full object-cover transition-transform duration-500 hover:scale-110">
+                    </div>
+                    <div class="p-6">
+                        <h4 class="text-xl font-bold mb-3">花样滑冰</h4>
+                        <p class="text-gray-600">
+                            运动员通过收缩手臂减小转动惯量，从而增加旋转速度；伸展手臂增大转动惯量，从而减慢旋转速度，始终保持角动量守恒。
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- 例子2 -->
+                <div class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 card-hover">
+                    <div class="h-48 overflow-hidden">
+                        <img src="https://picsum.photos/id/1035/600/400" alt="天体运动" class="w-full h-full object-cover transition-transform duration-500 hover:scale-110">
+                    </div>
+                    <div class="p-6">
+                        <h4 class="text-xl font-bold mb-3">天体运动</h4>
+                        <p class="text-gray-600">
+                            行星在椭圆轨道运行时，近地点距恒星近，转动惯量小，速度快；远地点距恒星远，转动惯量大，速度慢，角动量保持守恒。
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- 例子3 -->
+                <div class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 card-hover">
+                    <div class="h-48 overflow-hidden">
+                        <img src="https://picsum.photos/id/1060/600/400" alt="陀螺仪" class="w-full h-full object-cover transition-transform duration-500 hover:scale-110">
+                    </div>
+                    <div class="p-6">
+                        <h4 class="text-xl font-bold mb-3">陀螺仪</h4>
+                        <p class="text-gray-600">
+                            利用角动量守恒原理，陀螺仪能够保持其旋转轴方向不变，广泛应用于导航系统、飞行器稳定控制和智能手机姿态感应。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-dark text-white py-12">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center mb-8">
+                <div class="mb-6 md:mb-0 text-center md:text-left">
+                    <div class="flex items-center space-x-3 justify-center md:justify-start">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                            <i class="fa fa-cog text-white text-xl"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold">角动量守恒演示</h2>
+                    </div>
+                    <p class="text-gray-400 mt-3 max-w-md">
+                        一个直观展示物理守恒定律的交互式教育工具，帮助理解角动量守恒的基本原理。
+                    </p>
+                </div>
+                
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-8">
+                    <div>
+                        <h3 class="font-semibold text-lg mb-4">探索</h3>
+                        <ul class="space-y-2">
+                            <li><a href="#demo" class="text-gray-400 hover:text-primary transition-colors">交互式演示</a></li>
+                            <li><a href="#principle" class="text-gray-400 hover:text-primary transition-colors">守恒原理</a></li>
+                            <li><a href="#examples" class="text-gray-400 hover:text-primary transition-colors">实际应用</a></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-lg mb-4">资源</h3>
+                        <ul class="space-y-2">
+                            <li><a href="#" class="text-gray-400 hover:text-primary transition-colors">物理学习资料</a></li>
+                            <li><a href="#" class="text-gray-400 hover:text-primary transition-colors">相关实验</a></li>
+                            <li><a href="#" class="text-gray-400 hover:text-primary transition-colors">教学视频</a></li>
+                        </ul>
+                    </div>
+                    <div class="col-span-2 md:col-span-1">
+                        <h3 class="font-semibold text-lg mb-4">联系我们</h3>
+                        <ul class="space-y-2">
+                            <li class="flex items-center"><i class="fa fa-envelope text-gray-400 mr-2"></i> contact@physicdemo.com</li>
+                            <li class="flex items-center"><i class="fa fa-globe text-gray-400 mr-2"></i> physicdemo.com</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="border-t border-gray-800 pt-8 text-center text-gray-500">
+                <p>© 2023 物理原理可视化项目 | 角动量守恒演示</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // 物理参数设置
+        const maxAngularVelocity = 12.56; // 最大角速度，单位 rad/s
+        const minMomentOfInertia = 1.0;   // 最小转动惯量，单位 kg·m²
+        const maxMomentOfInertia = 4.0;   // 最大转动惯量，单位 kg·m²
+        
+        // 角动量守恒值 = 最小转动惯量 × 最大角速度 (保持恒定)
+        const angularMomentum = minMomentOfInertia * maxAngularVelocity; 
+        
+        // 初始值设为最大转动惯量，对应最小角速度
+        let momentOfInertia = maxMomentOfInertia; 
+        let angularVelocity = angularMomentum / momentOfInertia; 
+        
+        // 动画状态
+        let isSpinning = false;
+        let animationId = null;
+        let rotationAngle = 0;
+        let lastTimestamp = 0;
+        
+        // DOM 元素
+        const rotor = document.getElementById('rotor');
+        const inertiaSlider = document.getElementById('moment-of-inertia');
+        const inertiaValue = document.getElementById('inertia-value');
+        const velocityValue = document.getElementById('angular-velocity');
+        const momentumValue = document.getElementById('angular-momentum');
+        const momentumBar = document.getElementById('momentum-bar');
+        const startBtn = document.getElementById('start-btn');
+        const pauseBtn = document.getElementById('pause-btn');
+        const dataInertia = document.getElementById('data-inertia');
+        const dataVelocity = document.getElementById('data-velocity');
+        const dataMomentum = document.getElementById('data-momentum');
+        const massElements = [
+            document.getElementById('mass1'),
+            document.getElementById('mass2'),
+            document.getElementById('mass3'),
+            document.getElementById('mass4')
+        ];
+        const armElements = [
+            document.getElementById('arm1'),
+            document.getElementById('arm2'),
+            document.getElementById('arm3'),
+            document.getElementById('arm4')
+        ];
+        
+        // 初始化图表 - 强调反比关系
+        const ctx = document.getElementById('physics-chart').getContext('2d');
+        const physicsChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: Array.from({length: 31}, (_, i) => (minMomentOfInertia + i * 0.1).toFixed(1)),
+                datasets: [
+                    {
+                        label: '角速度 (rad/s)',
+                        data: Array.from({length: 31}, (_, i) => (angularMomentum / (minMomentOfInertia + i * 0.1)).toFixed(2)),
+                        borderColor: '#2563eb',
+                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 0,
+                        borderWidth: 3
+                    },
+                    {
+                        label: '角动量 (kg·m²/s)',
+                        data: Array.from({length: 31}, () => angularMomentum.toFixed(2)),
+                        borderColor: '#7c3aed',
+                        backgroundColor: 'transparent',
+                        borderDash: [5, 5],
+                        tension: 0,
+                        pointRadius: 0,
+                        borderWidth: 2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: '转动惯量 (kg·m²)',
+                            font: {
+                                weight: 'bold'
+                            }
+                        },
+                        min: minMomentOfInertia,
+                        max: maxMomentOfInertia,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: '物理量值',
+                            font: {
+                                weight: 'bold'
+                            }
+                        },
+                        max: maxAngularVelocity + 2,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            boxWidth: 8
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                        titleColor: '#1e293b',
+                        bodyColor: '#1e293b',
+                        borderColor: 'rgba(0, 0, 0, 0.1)',
+                        borderWidth: 1,
+                        padding: 12,
+                        boxPadding: 6,
+                        usePointStyle: true,
+                        callbacks: {
+                            title: function(context) {
+                                return `转动惯量: ${context[0].label} kg·m²`;
+                            },
+                            afterLabel: function(context) {
+                                if (context.dataset.label.includes('角速度')) {
+                                    return `角动量: ${angularMomentum.toFixed(2)} kg·m²/s (恒定)`;
+                                }
+                            }
+                        }
+                    }
+                },
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
+                },
+                animation: {
+                    duration: 1500,
+                    easing: 'easeOutQuart'
+                }
+            }
+        });
+        
+        // 更新显示值 - 强调守恒关系
+        function updateDisplayValues() {
+            // 更新所有显示的物理量
+            inertiaValue.textContent = `${momentOfInertia.toFixed(1)} kg·m²`;
+            velocityValue.textContent = `${angularVelocity.toFixed(2)} rad/s`;
+            momentumValue.textContent = `${angularMomentum.toFixed(2)} kg·m²/s`;
+            
+            // 更新数据面板
+            dataInertia.textContent = `${momentOfInertia.toFixed(1)} kg·m²`;
+            dataVelocity.textContent = `${angularVelocity.toFixed(2)} rad/s`;
+            dataMomentum.textContent = `${angularMomentum.toFixed(2)} kg·m²/s`;
+            
+            // 角动量条始终满值，强调守恒
+            momentumBar.style.width = `100%`;
+            
+            // 更明显地展示转动惯量变化：转动惯量越大，质量块离中心越远
+            const armLength = 60 + (momentOfInertia - minMomentOfInertia) * 40; // 范围60-180px
+            armElements.forEach(arm => {
+                if (arm.id === 'arm1' || arm.id === 'arm2') {
+                    arm.style.width = `${armLength}px`;
+                } else {
+                    arm.style.height = `${armLength}px`;
+                }
+            });
+            
+            // 调整质量块位置
+            massElements.forEach((mass, index) => {
+                if (index === 0) { // mass1
+                    mass.style.right = `calc(100% + ${armLength}px)`;
+                } else if (index === 1) { // mass2
+                    mass.style.left = `calc(100% + ${armLength}px)`;
+                } else if (index === 2) { // mass3
+                    mass.style.bottom = `calc(100% + ${armLength}px)`;
+                } else if (index === 3) { // mass4
+                    mass.style.top = `calc(100% + ${armLength}px)`;
+                }
+            });
+            
+            // 质量块大小随转动惯量变化，增强视觉反馈
+            const massSize = 24 + (momentOfInertia - minMomentOfInertia) * 6; // 转动惯量大，质量块也大
+            massElements.forEach(mass => {
+                mass.style.width = `${massSize}px`;
+                mass.style.height = `${massSize}px`;
+            });
+        }
+        
+        // 动画循环 - 使用时间差确保角速度准确
+        function animate(timestamp) {
+            if (!isSpinning) return;
+            
+            // 计算时间差，确保不同设备上旋转速度一致
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const deltaTime = (timestamp - lastTimestamp) / 1000; // 转换为秒
+            lastTimestamp = timestamp;
+            
+            // 根据角速度和时间差更新旋转角度
+            rotationAngle += angularVelocity * deltaTime;
+            rotor.style.transform = `rotate(${rotationAngle}rad)`;
+            
+            animationId = requestAnimationFrame(animate);
+        }
+        
+        // 事件监听器 - 转动惯量滑块
+        inertiaSlider.addEventListener('input', function() {
+            // 实时更新转动惯量
+            momentOfInertia = parseFloat(this.value);
+            // 计算新的角速度，保持角动量守恒
+            angularVelocity = angularMomentum / momentOfInertia;
+            // 更新显示
+            updateDisplayValues();
+            
+            // 高亮显示变化关系
+            highlightConservation();
+        });
+        
+        // 短暂高亮守恒关系
+        function highlightConservation() {
+            const elements = [dataMomentum, momentumValue];
+            elements.forEach(el => {
+                el.classList.add('scale-110', 'font-bold');
+                el.classList.add('text-accent');
+                setTimeout(() => {
+                    el.classList.remove('scale-110', 'font-bold');
+                    el.classList.remove('text-accent');
+                }, 500);
+            });
+        }
+        
+        // 事件监听器 - 开始按钮
+        startBtn.addEventListener('click', function() {
+            if (!isSpinning) {
+                isSpinning = true;
+                lastTimestamp = 0; // 重置时间戳
+                requestAnimationFrame(animate);
+                startBtn.disabled = true;
+                pauseBtn.disabled = false;
+                startBtn.classList.remove('bg-primary', 'hover:bg-primary/90', 'shadow-md', 'hover:shadow-lg');
+                startBtn.classList.add('bg-gray-200', 'cursor-not-allowed');
+                pauseBtn.classList.remove('bg-gray-200', 'hover:bg-gray-300');
+                pauseBtn.classList.add('bg-primary', 'hover:bg-primary/90', 'shadow-md', 'hover:shadow-lg');
+            }
+        });
+        
+        // 事件监听器 - 暂停按钮
+        pauseBtn.addEventListener('click', function() {
+            if (isSpinning) {
+                isSpinning = false;
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                }
+                pauseBtn.disabled = true;
+                startBtn.disabled = false;
+                pauseBtn.classList.remove('bg-primary', 'hover:bg-primary/90', 'shadow-md', 'hover:shadow-lg');
+                pauseBtn.classList.add('bg-gray-200', 'hover:bg-gray-300');
+                startBtn.classList.remove('bg-gray-200', 'cursor-not-allowed');
+                startBtn.classList.add('bg-primary', 'hover:bg-primary/90', 'shadow-md', 'hover:shadow-lg');
+            }
+        });
+        
+        // 滚动时导航栏效果
+        window.addEventListener('scroll', function() {
+            const header = document.querySelector('header');
+            if (window.scrollY > 50) {
+                header.classList.add('py-2', 'shadow');
+                header.classList.remove('py-4');
+            } else {
+                header.classList.add('py-4');
+                header.classList.remove('py-2', 'shadow');
+            }
+        });
+        
+        // 初始化显示
+        updateDisplayValues();
+        
+        // 页面加载动画
+        window.addEventListener('load', function() {
+            document.body.classList.add('loaded');
+        });
+    </script>
+</body>
+</html>
